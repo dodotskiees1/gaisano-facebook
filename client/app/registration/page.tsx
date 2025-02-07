@@ -28,7 +28,7 @@ const Page = () => {
     const formData = {
         
       name: (form.elements.namedItem("name") as HTMLInputElement)?.value || "",
-      middlename: (form.elements.namedItem("middlename") as HTMLInputElement)?.value || "",
+      middle: (form.elements.namedItem("middle") as HTMLInputElement)?.value || "",
       lastname: (form.elements.namedItem("lastname") as HTMLInputElement)?.value || "",
       month: (form.elements.namedItem("month")as HTMLSelectElement)?.value || "",
       day: (form.elements.namedItem("day")as HTMLSelectElement)?.value || "",
@@ -73,7 +73,7 @@ const Page = () => {
           
           <div className="flex flex-col md:flex-row gap-4 mt-4">
             <input type="text" name="name" placeholder="Name" className="border-2 border-gray-300 p-4 w-full" required />
-            <input type="text" name="middlename" placeholder="Middle Name" className="border-2 border-gray-300 p-4 w-full" required />
+            <input type="text" name="middle" placeholder="Middle Name" className="border-2 border-gray-300 p-4 w-full" required />
             <input type="text" name="lastname" placeholder="Lastname" className="border-2 border-gray-300 p-4 w-full" required />
           </div>
           

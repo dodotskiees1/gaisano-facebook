@@ -78,8 +78,85 @@ app.post(
         }
     }
 );
+app.post(
+    '/supplier',
+    [
+        body('sup_name').notEmpty().withMessage('name is required'),
+        body('sup_contact').notEmpty().withMessage('contact required'),
+        body('sup_email').notEmpty().withMessage('emial is requird'),
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+        const { sup_name, sup_contact, sup_email } = req.body;
+
+        try {
+            console.log("adding supplier request:", req.body);
+                if (!db) {
+                    console.error("database is not connected");
+                    return res.status(500).json({ message: "database is not connected"});
+                }
+
+                    const [rows] = await db.execute('SELECT * FROM tbl_supplier WHERE sup_email = ?', [sup_email])
+                    if (rows.length > 0){
+                        return res.status(400).json({ message: "email already exist"});
+                    }
 
 
+                    await db.execute('INSERT INTO tbl_supplier (sup_name, sup_contact, sup_email) VALUES (?, ?, ?)',
+                        [sup_name, sup_contact, sup_email]);
+                        res.status(400).json({ message: "supplier addes"});
+
+        } catch (error) {
+            console.error("database error:", error);
+            res.status(500).json({ message: 'server error', error: error.message });
+        }
+
+        }
+
+
+);
+app.post(
+        '/admin',
+        [
+            body('admin_username').notEmpty().withMessage('name is requied'),
+            body('password').notEmpty().withMessage('password is required'),
+        ],
+
+            async (req, res) => {
+                const errors = validationResult(req);
+                if (!errors.isEmpty()) {
+                    return res.status(400).json({ erros: errors.array() });
+                }
+                const { admin_username, password } = req.body;
+                    try {
+                        console.log('Adding request:', req.body);
+
+                        if (!db) {
+                            console.error("database is not connected");
+                            return res.status(400).json({ message: 'database error'});
+                        }
+
+                        const [row] = await db.execute('SELECT * FROM tbl_admin WHERE admin_username = ?', [admin_username]);
+                        if (row.length > 0) {
+                            return res.status(400).json({ message: 'Username already exist'});
+                        }
+
+                        await db.execute('INSERT INTO tbl_admin (admin_username, password) VALUES (?, ?)',
+                            [admin_username, password]);
+
+                            res.status(201).json({message: 'user added'});
+
+                    } catch (error) {
+                        console.error("database error:", error);
+                        res.status(500).json({ message: 'server error', error: error.message});
+                    }
+
+            }
+
+    );
 app.listen(PORT, () => {
     console.log(`Server started on port ${PORT}`);
 });
