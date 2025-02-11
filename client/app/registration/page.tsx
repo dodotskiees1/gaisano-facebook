@@ -15,6 +15,8 @@ const Page = () => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showRePassword, setshowRePassword] = useState(false);
+  const [password, setPassword] = useState("");
+  const [repassword, setRepassword] = useState("");
   const MontList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const DayList = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
   const currentYear = new Date().getFullYear();
@@ -23,7 +25,10 @@ const Page = () => {
    
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); // Prevents the form from submitting the default way
-  
+        if (password != repassword) {
+          alert("password do not match");
+          return;
+        }
     const form = e.target as HTMLFormElement; // Cast to HTMLFormElement
     const formData = {
         
@@ -37,7 +42,7 @@ const Page = () => {
       address: (form.elements.namedItem("address")as HTMLInputElement)?.value || "",
       contact: (form.elements.namedItem("contact")as HTMLInputElement)?.value || "",
       email: (form.elements.namedItem("email")as HTMLInputElement)?.value || "",
-      password: (form.elements.namedItem("password")as HTMLInputElement)?.value || "",
+      password,
 
       };
       console.log("form data", formData);
@@ -112,14 +117,14 @@ const Page = () => {
           </div>
           
           <div className="relative mt-4">
-            <input type={showPassword ? "text" : "password"} name="password" placeholder="Password" className="border-2 border-gray-300 p-4 w-full" required />
+            <input type={showPassword ? "text" : "password"} name="password" placeholder="Password" className="border-2 border-gray-300 p-4 w-full" required onChange={(e) => setPassword (e.target.value)} />
             <span className="absolute right-4 top-4 text-gray-500 cursor-pointer" onClick={() => setShowPassword(!showPassword)}>
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </span>
           </div>
           
           <div className="relative mt-4">
-            <input type={showRePassword ? "text" : "password"} name="Password" placeholder="Retype Password" className="border-2 border-gray-300 p-4 w-full pr-10" required />
+            <input type={showRePassword ? "text" : "password"} name="repassword" placeholder="Retype Password" className="border-2 border-gray-300 p-4 w-full pr-10" required onChange={(e) => setRepassword (e.target.value)} />
             <span className="absolute right-4 top-4 text-gray-500 cursor-pointer" onClick={() => setshowRePassword(!showRePassword)}>
               {showRePassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </span>

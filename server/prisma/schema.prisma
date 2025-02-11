@@ -22,15 +22,15 @@ model tbl_supplier {
 
 model tbl_user {
   id       Int    @id @default(autoincrement())
-  name     String @unique
-  middle   String @unique
-  lastname String @unique
-  month    String @unique
-  day      String @unique
-  year     String @unique
-  gender   String @unique
-  address  String @unique
-  contact  String
+  name     String? 
+  middle   String? 
+  lastname String?
+  month    String? 
+  day      String? 
+  year     String? 
+  gender   String? 
+  address  String?
+  contact  String?
   email    String @unique
-  password String @unique
+  password String? 
 }
