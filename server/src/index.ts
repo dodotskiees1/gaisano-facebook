@@ -6,12 +6,13 @@ import getIdRouter from './router/authentication';
 import addSupplierRouter from './router/authentication';
 import deleteUserRouter from './router/authentication';
 import updateIdRouter from './router/authentication';
+import authRouter from './router/authentication'
 const app = express();
 const PORT = 8080;
 
 app.use(express.json());
 app.use(cors());
-
+app.use(authRouter);
 app.use('/registration', registrationRouter);
 app.use('/addSupplier', addSupplierRouter);
 app.use('/getAlluser', getAllUserRouter)

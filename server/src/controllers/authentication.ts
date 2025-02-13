@@ -1,8 +1,5 @@
 import { Request, Response } from "express";
-// import prisma from "../db/prisma";
 import connectDb from "../db/index";
-
-
 // export const registerUser = async (req: Request, res: Response): Promise<void> => {
 //   const { name, middle, lastname, month, day, year, gender, address, contact, email, password } = req.body;
 
@@ -38,9 +35,67 @@ import connectDb from "../db/index";
 //     res.status(500).json({ message: "Internal server error", error: error.message });
 //   }
 // };
+export const loginUser = async (req: Request, res: Response): Promise<void> => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    res.status(400).json({ message: "Email and password are required" });
+    return;
+  }
+
+  try {
+    const connection = await connectDb();
+    const [users] = await connection.execute<any[]>(
+      "SELECT * FROM tbl_user WHERE email = ? AND password = ?",
+      [email, password]
+    );
+
+    if (users.length === 0) {
+      res.status(401).json({ message: "Invalid email or password" });
+      return;
+    }
+
+    const user = users[0];
+
+    res.status(200).json({
+      message: "Login successful",
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email
+      }
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+export const checkAuth = async (req: Request, res: Response): Promise<void> => {
+  const { email } = req.query;
+
+  try {
+    const connection = await connectDb();
+    const [users] = await connection.execute<any[]>(
+      "SELECT id, name, email FROM tbl_user WHERE email = ?",
+      [email]
+    );
+
+    if (users.length === 0) {
+      res.status(401).json({ message: "User not found" });
+      return;
+    }
+
+    res.status(200).json(users[0]);
+  } catch (error) {
+    console.error("Check auth error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
 export const registerUser = async (req: Request, res: Response): Promise<void> => {
-    const { name, middle, lastname, month, day, year, gender, address, contact, email, password } = req.body;
-  
+  const { name, middle, lastname, month, day, year, gender, address, contact, email, password } = req.body;
+
     if (!name || !lastname || !email || !password) {
       res.status(400).json({ message: "Required fields are missing" });
       return;
@@ -57,13 +112,30 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
         res.status(400).json({ message: "Email already exists" });
         return;
       }
-  
-      await connection.execute(
+        
+       const [result]: any = await connection.execute(
         "INSERT INTO tbl_user (name, middle, lastname, month, day, year, gender, address, contact, email, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [name, middle, lastname, month, day, year, gender, address, contact, email, password]
       );
-  
-      res.status(201).json({ message: "User registered successfully" });
+      const insertedId = result.insertId;
+      res.status(201).json({ message: "User registered successfully", 
+        user: {
+          id: insertedId,
+          name,
+          middle,
+          lastname,
+          month,
+          day,
+          year,
+          gender,
+          address,
+          contact,
+          email
+          
+        }
+
+      });
+        
     } catch (error) {
       console.error("Error during user registration:", error);
       res.status(500).json({ message: "Internal server error", error: error.message });

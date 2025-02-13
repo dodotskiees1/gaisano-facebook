@@ -47,7 +47,8 @@ const Page = () => {
       };
       console.log("form data", formData);
     try {
-      const response = await fetch("http://localhost:8080/registration", {
+      console.log("test")
+      const response = await fetch("http://localhost:8080/registration/register", {
         method: "POST",
         headers: { "Content-Type": "application/json"},
         body: JSON.stringify(formData),
