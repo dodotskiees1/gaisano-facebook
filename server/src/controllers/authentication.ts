@@ -38,15 +38,10 @@ import connectDb from "../db/index";
 export const loginUser = async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
-    res.status(400).json({ message: "Email and password are required" });
-    return;
-  }
-
   try {
     const connection = await connectDb();
     const [users] = await connection.execute<any[]>(
-      "SELECT * FROM tbl_user WHERE email = ? AND password = ?",
+      "SELECT id, name, email FROM tbl_user WHERE email = ? AND password = ?",
       [email, password]
     );
 
@@ -57,7 +52,10 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
 
     const user = users[0];
 
+    // You might want to set up a session or JWT here
+    
     res.status(200).json({
+      success: true,
       message: "Login successful",
       user: {
         id: user.id,

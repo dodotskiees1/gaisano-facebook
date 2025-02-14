@@ -27,12 +27,19 @@ const Page = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email, password }),
+        credentials: 'include', // Important for cookies
       });
   
       const data = await response.json();
   
       if (response.ok) {
-            
+        // Store user data in localStorage
+        localStorage.setItem('userData', JSON.stringify({
+          id: data.user.id,
+          name: data.user.name,
+          email: data.user.email
+        }));
+        
         router.push('/dashboard');
       } else {
         setError(data.message || 'Invalid email or password');

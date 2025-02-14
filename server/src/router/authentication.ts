@@ -4,6 +4,8 @@ import { registerUser, getAllUser, getId, deleteUser, updateId, loginUser, check
 import { addSupplier } from '../controllers/supplier';
 import { Validator } from "../middlewares/validation";
 import { userSchema } from "../controllers/middlewares/uservalidation";
+import { createPost } from "../controllers/post";
+import { GetallPost } from "../controllers/post";
 const router = express.Router();
 const validatorUser = new Validator().execute(userSchema);
 router.post("/register", validatorUser, registerUser);
@@ -12,6 +14,8 @@ router.get("/check-auth", checkAuth);
 router.post('/addSupplier', addSupplier);
 router.get('/users', getAllUser);
 router.get('/get/:id', getId);
-router.delete('/delete/:id', deleteUser)
-router.put('/update/:id', updateId) 
+router.get('/getAllPost', GetallPost); 
+router.delete('/delete/:id', deleteUser);
+router.put('/update/:id', updateId); 
+router.post('/createpost', createPost);
 export default router;
