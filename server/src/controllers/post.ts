@@ -1,26 +1,44 @@
 import { Request, Response } from "express";
 import connectDb from "../db/index";
 import path from 'path';
+import { RowDataPacket } from 'mysql2';
+interface PostRow extends RowDataPacket {
+  id: number;
+  user_id: number;
+  post: string;
+  image: string | null;
+  created_at: string;
+  name: string;
+  middle: string | null;
+  lastname: string;
+}
 
+interface PostWithImages extends Omit<PostRow, 'image'> {
+  images: string[];
+}
+interface MulterRequest extends Request {
+  files?: Express.Multer.File[];
+}
 
-export const createPost = async (req: Request, res: Response): Promise<void> => {
+export const createPost = async (req: MulterRequest, res: Response): Promise<void> => {
   try {
     const { user_id, post } = req.body;
-    let imagePath = null;
+    let imagePaths: string[] = [];
     
-    if (req.file) {
-      // Store the path in the database starting with /images/
-      imagePath = `/images/${req.file.filename}`;
+    // Check if files exist and handle multiple files
+    if (req.files && req.files.length > 0) {
+      imagePaths = req.files.map(file => `/images/${file.filename}`);
     }
     
-    // ... rest of your validation code ...
-
     const connection = await connectDb();
     const created_at = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
+    // Join the image paths with a delimiter
+    const imagePathString = imagePaths.length > 0 ? imagePaths.join(';') : null;
+
     const [result]: any = await connection.execute(
       "INSERT INTO tbl_post (user_id, post, image, created_at) VALUES (?, ?, ?, ?)",
-      [user_id, post, imagePath, created_at]
+      [user_id, post, imagePathString, created_at]
     );
 
     // Get user information
@@ -38,7 +56,9 @@ export const createPost = async (req: Request, res: Response): Promise<void> => 
           user_id,
           user_name: users[0]?.name,
           post,
-          image: imagePath ? `http://localhost:8080${imagePath}` : null,
+          images: imagePaths.length > 0 
+            ? imagePaths.map(path => `http://localhost:8080${path}`)
+            : [],
           created_at
         }
       });
@@ -54,7 +74,7 @@ export const createPost = async (req: Request, res: Response): Promise<void> => 
     res.status(500).json({
       success: false,
       message: "Internal server error",
-      error: error.message
+      error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 };
@@ -62,17 +82,18 @@ export const createPost = async (req: Request, res: Response): Promise<void> => 
 export const GetallPost = async (req: Request, res: Response): Promise<void> => {
   try {
     const connection = await connectDb();
-    const [posts] = await connection.execute<any[]>(
+    const [posts] = await connection.execute<PostRow[]>(
       `SELECT p.*, u.name, u.middle, u.lastname 
        FROM tbl_post p 
        JOIN tbl_user u ON p.user_id = u.id 
        ORDER BY p.created_at DESC`
     );
 
-    // Add the server URL to image paths
-    const postsWithFullImageUrls = posts.map(post => ({
+    const postsWithFullImageUrls: PostWithImages[] = posts.map((post) => ({
       ...post,
-      image: post.image ? `http://localhost:8080${post.image}` : null
+      images: post.image && post.image.length > 0
+        ? post.image.split(';').map((img: string) => `http://localhost:8080${img}`)
+        : []
     }));
 
     res.status(200).json(postsWithFullImageUrls);
@@ -81,6 +102,72 @@ export const GetallPost = async (req: Request, res: Response): Promise<void> => 
     res.status(500).json({
       success: false,
       message: "Internal server error",
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+export const PostDelete = async (req: Request, res: Response): Promise<void> => 
+  {
+    try {
+
+      const id = req.params.id;
+        if (!id) {
+          res.status(500).json({
+            success: false,
+            message: "failed to delete"
+          });
+          return;
+        }
+          const connection = await connectDb();
+          const [result]: any = await connection.execute("DELETE FROM `tbl_post` WHERE id = ?", [id]);
+    if (result.affectedRows === 0) {
+      res.status(500).json({
+        success: false,
+        message: "record cant found"
+      });
+      return;
+    }
+    res.status(500).json({
+      success: true,
+      message: "Post successfull deleted"
+    });
+    } catch (error) {
+      console.error("error cant delete", error);
+      res.status(500).json({
+        message: "server error", error: error.message
+      })
+    }
+};
+export const PostUpdate = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = Number(req.params.id);
+    const { post } = req.body;
+
+    const connection = await connectDb();
+    const [result]: any = await connection.execute(
+      "UPDATE tbl_post SET post = ? WHERE id = ?",
+      [post, id]
+    );
+
+    if (result.affectedRows === 0) {
+      res.status(404).json({
+        success: false,
+        message: "Post not found"
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Post Successfully Updated"
+    });
+    
+  } catch (error) {
+    console.error("Can't Update Post", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error", 
       error: error.message
     });
   }

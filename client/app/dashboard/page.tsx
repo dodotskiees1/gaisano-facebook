@@ -3,6 +3,8 @@ import axios from "axios";
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiSettings, FiSun, FiMoon } from 'react-icons/fi';
+import { BsThreeDotsVertical } from 'react-icons/bs';
+import { CiEdit } from "react-icons/ci";
 import {
   BsCamera,
   BsPeople,
@@ -18,10 +20,16 @@ const DashboardPage = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [theme, setTheme] = useState('light');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
   const [postContent, setPostContent] = useState("");
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+const [editingPost, setEditingPost] = useState<Post | null>(null);
+const [editedContent, setEditedContent] = useState("");
+const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') || 'light';
     setTheme(savedTheme);
@@ -32,11 +40,16 @@ const DashboardPage = () => {
     user_id: number;
     post: string;
     image: string;
+    images: string[];  // Add this line
     created_at: string;
-    name: string;      // these will come from the JOIN with tbl_user
+    name: string;
     middle: string;
     lastname: string;
   }
+  const handleImageModalOpen = (post: Post) => {
+    setSelectedPost(post);
+    setShowImageModal(true);
+  };
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
@@ -78,12 +91,12 @@ const DashboardPage = () => {
     formData.append('user_id', userData.id);
     formData.append('post', postContent);
 
-    if (selectedImages.length > 0) {
-      // Get the file from the input
-      const fileInput = fileInputRef.current;
-      if (fileInput && fileInput.files && fileInput.files[0]) {
-        formData.append('image', fileInput.files[0]);
-      }
+    // Handle multiple files
+    const fileInput = fileInputRef.current;
+    if (fileInput && fileInput.files) {
+      Array.from(fileInput.files).forEach((file) => {
+        formData.append('images', file);
+      });
     }
 
     try {
@@ -93,7 +106,7 @@ const DashboardPage = () => {
           'Content-Type': 'multipart/form-data',
         },
       });
-      setIsModalOpen(false);
+
       if (response.status === 201) {
         // Clear the form
         setPostContent("");
@@ -104,7 +117,7 @@ const DashboardPage = () => {
         }
 
         // Refresh posts
-        fetchPosts(); // Make sure you have this function to get updated posts
+        fetchPosts();
       }
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -138,6 +151,31 @@ const DashboardPage = () => {
     };
     fetchPosts();
   }, []);
+  const handleEdit = (post: Post) => {
+    setEditingPost(post);
+    setEditedContent(post.post);
+    setIsEditModalOpen(true);
+  };
+  
+  const handleUpdatePost = async () => {
+    if (!editingPost) return;
+  
+    try {
+      const response = await axios.put(`http://localhost:8080/UpdatePost/PostUpdate/${editingPost.id}`, {
+        post: editedContent
+      }, {
+        withCredentials: true
+      });
+  
+      if (response.status === 200) {
+        setIsEditModalOpen(false);
+        fetchPosts(); // Refresh posts after update
+      }
+    } catch (error) {
+      console.error("Error updating post:", error);
+      alert("Failed to update post");
+    }
+  };
 
   {/* 
         <div className="absolute left-[26%] right-[25%] top-20">
@@ -147,17 +185,17 @@ const DashboardPage = () => {
     <div className={`min-h-screen relative ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}`}>
       {/* Vertical dividers - hide on mobile */}
       <div className="hidden md:block w-1/4">
-        <div className={`w-[2px] h-full fixed ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-300'}`} 
-             style={{ left: '25%' }} />
+        <div className={`w-[2px] h-full fixed ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-300'}`}
+          style={{ left: '25%' }} />
       </div>
 
       <div className="hidden md:block w-1/4">
         <div className={`w-[2px] h-full fixed ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-300'}`}
-             style={{ left: '75%' }} />
+          style={{ left: '75%' }} />
       </div>
 
       {/* Main content area - adjust positioning for mobile */}
-      <div className="absolute w-full md:w-auto md:left-[26%] md:right-[25%] top-20 px-4 md:px-0">
+      <div className="absolute w-full md:w-auto md:left-[26%] md:right-[25%] top-20 px-4 md:px-0 pb-5">
         {/* Post creation card */}
         <div className={`w-full md:w-[98%] p-4 md:p-6 rounded-lg shadow-md ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
           <div className="flex items-center space-x-4">
@@ -215,27 +253,72 @@ const DashboardPage = () => {
               </div>
 
               <div className="flex-1">
-              <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-  {`${post.name || ''} ${post.middle || ''} ${post.lastname || ''}`.trim()}
-</h3>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                  {new Date(post.created_at).toLocaleString()}
-                </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {`${post.name || ''} ${post.middle || ''} ${post.lastname || ''}`.trim()}
+                    </h3>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                      {new Date(post.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="relative">
+                  <button 
+    className={`p-1 rounded-full hover:bg-gray-100 ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+    onClick={() => setOpenMenuId(openMenuId === post.id ? null : post.id)}
+  >
+    <BsThreeDotsVertical className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`} />
+  </button>
+  {openMenuId === post.id && (
+    <div className={`absolute right-0 mt-2 w-20 rounded-md shadow-lg ${
+      theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+    } ring-1 ring-black ring-opacity-5 z-10`}>
+      <div className="py-1">
+        <button
+          onClick={() => {
+            handleEdit(post);
+            setOpenMenuId(null);
+          }}
+          className={`flex items-center px-4 py-2 text-sm w-full ${
+            theme === 'dark' 
+              ? 'text-gray-300 hover:bg-gray-700' 
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          <CiEdit className="mr-2 w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  )}
+                  </div>
+                </div>
                 <p className={`mt-2 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
                   {post.post}
                 </p>
 
-                {post.image && (
-                  <div className="mt-4">
-                    <img
-                      src={post.image}
-                      alt="Post content"
-                      className="rounded-lg max-h-96 w-auto"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                      }}
-                    />
+                {post.images && post.images.length > 0 && (
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    {post.images.slice(0, 4).map((image, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={image}
+                          alt={`Post content ${index + 1}`}
+                          className="rounded-xl aspect-square w-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                        {index === 3 && post.images.length > 4 && (
+                          <div
+                            className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-xl cursor-pointer"
+                            onClick={() => handleImageModalOpen(post)}
+                          >
+                            <span className="text-white text-2xl font-bold">+{post.images.length - 4}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
 
@@ -268,6 +351,53 @@ const DashboardPage = () => {
             </div>
           </div>
         ))}
+
+        {/* edit */}
+        {isEditModalOpen && editingPost && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} 
+      rounded-lg p-4 md:p-6 w-full md:w-[45%] shadow-xl`}>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          Edit Post
+        </h3>
+        <button
+          onClick={() => setIsEditModalOpen(false)}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          ×
+        </button>
+      </div>
+
+      <textarea
+        className={`w-full h-32 p-3 rounded-md border ${theme === 'dark'
+          ? 'bg-gray-700 border-gray-600 text-white'
+          : 'bg-white border-gray-300 text-gray-900'
+        } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+        value={editedContent}
+        onChange={(e) => setEditedContent(e.target.value)}
+      />
+
+      <div className="flex justify-end space-x-3 mt-4">
+        <button
+          onClick={() => setIsEditModalOpen(false)}
+          className={`px-4 py-2 rounded-md ${theme === 'dark'
+            ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleUpdatePost}
+          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+        >
+          Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
         {/* Post creation modal */}
         {isModalOpen && (
@@ -359,6 +489,35 @@ const DashboardPage = () => {
           </div>
         )}
       </div>
+      {showImageModal && selectedPost && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} 
+      rounded-lg p-4 w-full max-w-4xl max-h-[90vh] overflow-y-auto`}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                All Images
+              </h3>
+              <button
+                onClick={() => setShowImageModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ×
+              </button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {selectedPost.images.map((image, index) => (
+                <div key={index} className="relative aspect-square">
+                  <img
+                    src={image}
+                    alt={`Post content ${index + 1}`}
+                    className="rounded-lg w-full h-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Navigation bar */}
       <nav className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-lg relative z-10`}>
@@ -377,7 +536,7 @@ const DashboardPage = () => {
                 className={`p-1 md:p-2 rounded-lg ${theme === 'dark'
                   ? 'hover:bg-gray-700 text-gray-300'
                   : 'hover:bg-gray-100 text-gray-600'
-                } focus:outline-none`}
+                  } focus:outline-none`}
                 aria-label="Videos"
               >
                 <BsCamera className="w-5 h-5 md:w-6 md:h-6" />
@@ -386,7 +545,7 @@ const DashboardPage = () => {
                 className={`p-1 md:p-2 rounded-lg ${theme === 'dark'
                   ? 'hover:bg-gray-700 text-gray-300'
                   : 'hover:bg-gray-100 text-gray-600'
-                } focus:outline-none`}
+                  } focus:outline-none`}
                 aria-label="Friend Requests"
               >
                 <BsPeople className="w-5 h-5 md:w-6 md:h-6" />
@@ -395,7 +554,7 @@ const DashboardPage = () => {
                 className={`p-1 md:p-2 rounded-lg ${theme === 'dark'
                   ? 'hover:bg-gray-700 text-gray-300'
                   : 'hover:bg-gray-100 text-gray-600'
-                } focus:outline-none`}
+                  } focus:outline-none`}
                 aria-label="Marketplace"
               >
                 <BsCart3 className="w-5 h-5 md:w-6 md:h-6" />
@@ -404,7 +563,7 @@ const DashboardPage = () => {
                 className={`p-1 md:p-2 rounded-lg ${theme === 'dark'
                   ? 'hover:bg-gray-700 text-gray-300'
                   : 'hover:bg-gray-100 text-gray-600'
-                } focus:outline-none`}
+                  } focus:outline-none`}
                 aria-label="Notifications"
               >
                 <BsBell className="w-5 h-5 md:w-6 md:h-6" />
@@ -418,7 +577,7 @@ const DashboardPage = () => {
                 className={`p-1 md:p-2 rounded-full ${theme === 'dark'
                   ? 'hover:bg-gray-700 text-white'
                   : 'hover:bg-gray-100 text-gray-600'
-                } focus:outline-none`}
+                  } focus:outline-none`}
               >
                 {theme === 'dark' ? (
                   <FiSun className="w-5 h-5 md:w-6 md:h-6" />
@@ -433,7 +592,7 @@ const DashboardPage = () => {
                   className={`p-1 md:p-2 rounded-full ${theme === 'dark'
                     ? 'hover:bg-gray-700 text-white'
                     : 'hover:bg-gray-100 text-gray-600'
-                  } focus:outline-none`}
+                    } focus:outline-none`}
                 >
                   <FiSettings className="w-5 h-5 md:w-6 md:h-6" />
                 </button>
@@ -446,7 +605,7 @@ const DashboardPage = () => {
                       className={`block px-4 py-2 text-sm ${theme === 'dark'
                         ? 'text-gray-200 hover:bg-gray-700'
                         : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                        }`}
                     >
                       Profile
                     </a>
@@ -455,7 +614,7 @@ const DashboardPage = () => {
                       className={`block w-full text-left px-4 py-2 text-sm ${theme === 'dark'
                         ? 'text-gray-200 hover:bg-gray-700'
                         : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                        }`}
                     >
                       Logout
                     </button>
